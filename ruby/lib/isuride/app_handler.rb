@@ -194,7 +194,7 @@ module Isuride
 
         if ride_count == 1
           # 初回利用で、初回利用クーポンがあれば必ず使う
-          coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", @current_user.id).first
+          coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL LIMIT 1 FOR UPDATE", @current_user.id).first
           if coupon.nil?
             # 無ければ他のクーポンを付与された順番に使う
             coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
