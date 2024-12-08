@@ -19,7 +19,8 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'owner_session cookie is required')
       end
-      owner = db.xquery('SELECT id FROM owners WHERE access_token = ?', access_token).first
+      # id しか使われていないみたいなので id だけ取得する
+      owner = db.xquery('SELECT id FROM owners WHERE access_token = ? LIMIT 1', access_token).first
       if owner.nil?
         raise HttpError.new(401, 'invalid access token')
       end
