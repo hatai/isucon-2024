@@ -166,7 +166,7 @@ module Isuride
       ride_id = ULID.generate
 
       fare = db_transaction do |tx|
-        rides = tx.xquery('SELECT * FROM rides WHERE user_id = ?', @current_user.id).to_a
+        rides = tx.xquery('SELECT id FROM rides WHERE user_id = ?', @current_user.id).to_a
 
         continuing_ride_count = rides.count do |ride|
           status = get_latest_ride_status(tx, ride.fetch(:id))
@@ -189,14 +189,14 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'MATCHING')
 
-        ride_count = tx.xquery('SELECT COUNT(*) FROM rides WHERE user_id = ?', @current_user.id, as: :array).first[0]
+        ride_count = tx.xquery('SELECT COUNT(id) FROM rides WHERE user_id = ?', @current_user.id, as: :array).first[0]
 
         if ride_count == 1
           # 初回利用で、初回利用クーポンがあれば必ず使う
-          coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", @current_user.id).first
+          coupon = tx.xquery("SELECT code FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", @current_user.id).first
           if coupon.nil?
             # 無ければ他のクーポンを付与された順番に使う
-            coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
+            coupon = tx.xquery('SELECT code FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
             unless coupon.nil?
               tx.xquery('UPDATE coupons SET used_by = ? WHERE user_id = ? AND code = ?', ride_id, @current_user.id, coupon.fetch(:code))
             end
@@ -205,13 +205,13 @@ module Isuride
           end
         else
           # 他のクーポンを付与された順番に使う
-          coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
+          coupon = tx.xquery('SELECT code FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
           unless coupon.nil?
             tx.xquery('UPDATE coupons SET used_by = ? WHERE user_id = ? AND code = ?', ride_id, @current_user.id, coupon.fetch(:code))
           end
         end
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT pickup_coordinate, pickup_coordinate, destination_coordinate, destination_coordinate FROM rides WHERE id = ?', ride_id).first
 
         calculate_discounted_fare(tx, @current_user.id, ride, req.pickup_coordinate.latitude, req.pickup_coordinate.longitude, req.destination_coordinate.latitude, req.destination_coordinate.longitude)
       end
@@ -506,7 +506,7 @@ module Isuride
             pickup_longitude = ride.fetch(:pickup_longitude)
 
             # すでにクーポンが紐づいているならそれの割引額を参照
-            coupon = tx.xquery('SELECT * FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
+            coupon = tx.xquery('SELECT discount FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
             if coupon.nil?
               0
             else
@@ -514,10 +514,10 @@ module Isuride
             end
           else
             # 初回利用クーポンを最優先で使う
-            coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", user_id).first
+            coupon = tx.xquery("SELECT discount FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", user_id).first
             if coupon.nil?
               # 無いなら他のクーポンを付与された順番に使う
-              coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
+              coupon = tx.xquery('SELECT discount FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
               if coupon.nil?
                 0
               else
