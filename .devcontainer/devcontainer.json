@@ -3,5 +3,11 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/app/ruby",
-  "postCreateCommand": ["bundle install"]
+  "portsAttributes": {
+    "3000": {
+      "label": "Hello Remote World",
+      "onAutoForward": "notify"
+    }
+  },
+  "postAttachCommand": ["bundle install"]
 }
