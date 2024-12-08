@@ -7,25 +7,37 @@ module Isuride
     # このAPIをインスタンス内から一定間隔で叩かせることで、椅子とライドをマッチングさせる
     # GET /api/internal/matching
     get '/matching' do
-      # MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-      ride = db.query('SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 1').first
+      ride = db.query('SELECT id FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 1').first
       unless ride
         halt 204
       end
 
-      10.times do
-        matched = db.query('SELECT * FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1').first
-        unless matched
-          halt 204
-        end
+      ride_id = ride.fetch(:id)
 
-        empty = db.xquery('SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE', matched.fetch(:id), as: :array).first[0]
-        if empty > 0
-          db.xquery('UPDATE rides SET chair_id = ? WHERE id = ?', matched.fetch(:id), ride.fetch(:id))
-          break
-        end
+      # ライド中ではない、最も近くて早い椅子を探す
+      matched = db.xquery("SELECT chairs.id, chairs.name, chair_models.speed,
+       chair_locations.latitude, chair_locations.longitude,
+       ABS(chair_locations.latitude - rides.pickup_latitude) + ABS(chair_locations.longitude - rides.pickup_longitude) AS distance
+      FROM chairs
+      JOIN chair_locations ON chairs.id = chair_locations.chair_id
+      JOIN chair_models ON chairs.model = chair_models.name
+      LEFT JOIN (
+        SELECT DISTINCT rides.chair_id
+        FROM rides
+        JOIN ride_statuses ON rides.id = ride_statuses.ride_id
+        WHERE ride_statuses.status IN ('MATCHING', 'ENROUTE', 'PICKUP', 'CARRYING')
+      ) AS active_chairs ON chairs.id = active_chairs.chair_id
+      JOIN rides ON rides.id = ?
+      WHERE chairs.is_active = TRUE
+      AND active_chairs.chair_id IS NULL
+      ORDER BY distance ASC, chair_models.speed DESC
+      LIMIT 1", ride_id).first
+
+      unless matched
+        halt 204
       end
 
+      db.xquery('UPDATE rides SET chair_id = ? WHERE id = ?', matched['id'], ride_id)
       204
     end
   end
