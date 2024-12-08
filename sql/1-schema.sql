@@ -35,7 +35,7 @@ CREATE TABLE chairs
   PRIMARY KEY (id),
   INDEX idx_chairs_is_active (is_active),
   INDEX idx_chairs_access_token (access_token),
-  INDEX idx_chairs_owner_id (owner_id),
+  INDEX idx_chairs_owner_id (owner_id)
 )
   COMMENT = '椅子情報テーブル';
 
