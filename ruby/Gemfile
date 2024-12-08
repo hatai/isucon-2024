@@ -10,7 +10,6 @@ gem 'sinatra'
 gem 'sinatra-contrib'
 gem 'ulid'
 gem 'newrelic_rpm'
-gem 'nanoid'
 
 group :development do
     gem 'vernier'
