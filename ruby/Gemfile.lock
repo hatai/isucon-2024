@@ -10,6 +10,7 @@ GEM
     mysql2 (0.5.6)
     mysql2-cs-bind (0.1.1)
       mysql2
+    newrelic_rpm (9.16.1)
     nio4r (2.7.4)
     puma (6.5.0)
       nio4r (~> 2.0)
@@ -36,6 +37,7 @@ GEM
       tilt (~> 2.0)
     tilt (2.4.0)
     ulid (1.4.0)
+    vernier (1.4.0)
 
 PLATFORMS
   ruby
@@ -44,10 +46,12 @@ DEPENDENCIES
   bigdecimal
   mysql2
   mysql2-cs-bind
+  newrelic_rpm
   puma
   sinatra
   sinatra-contrib
   ulid
+  vernier
 
 BUNDLED WITH
    2.5.22
