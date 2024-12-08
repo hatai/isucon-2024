@@ -9,14 +9,14 @@ module Isuride
   class AppHandler < BaseHandler
     CurrentUser = Data.define(
       :id,
-      :username,
-      :firstname,
-      :lastname,
-      :date_of_birth,
-      :access_token,
-      :invitation_code,
-      :created_at,
-      :updated_at,
+      # :username,
+      # :firstname,
+      # :lastname,
+      # :date_of_birth,
+      # :access_token,
+      # :invitation_code,
+      # :created_at,
+      # :updated_at,
     )
 
     before do
@@ -28,7 +28,8 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'app_session cookie is required')
       end
-      user = db.xquery('SELECT * FROM users WHERE access_token = ?', access_token).first
+      # id しか使われていないみたいなので id だけ取得する
+      user = db.xquery('SELECT id FROM users WHERE access_token = ?', access_token).first
       if user.nil?
         raise HttpError.new(401, 'invalid access token')
       end
