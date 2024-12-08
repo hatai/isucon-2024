@@ -106,7 +106,7 @@ module Isuride
       response = db_transaction do |tx|
         ride = tx.xquery('SELECT id, user_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1', @current_chair.id).first
         unless ride
-          halt json(data: nil, retry_after_ms: 30)
+          halt json(data: nil, retry_after_ms: 1000)
         end
 
         yet_sent_ride_status = tx.xquery('SELECT id FROM ride_statuses WHERE ride_id = ? AND chair_sent_at IS NULL ORDER BY created_at ASC LIMIT 1', ride.fetch(:id)).first
@@ -140,7 +140,7 @@ module Isuride
             },
             status:,
           },
-          retry_after_ms: 30,
+          retry_after_ms: 1000,
         }
       end
 
