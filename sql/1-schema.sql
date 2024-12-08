@@ -94,7 +94,10 @@ CREATE TABLE rides
   INDEX idx_rides_user_id (user_id),
   INDEX idx_rides_chair_id (chair_id),
   INDEX idx_rides_updated_at (updated_at),
-  INDEX idx_rides_user_id_updated_at (user_id, updated_at DESC)
+  INDEX idx_rides_user_id_created_at (user_id, created_at DESC),
+  INDEX idx_rides_user_id_updated_at (user_id, updated_at DESC),
+  INDEX idx_rides_chair_id_created_at (chair_id, created_at DESC),
+  INDEX idx_rides_chair_id_updated_at (chair_id, updated_at DESC)
 )
   COMMENT = 'ライド情報テーブル';
 
