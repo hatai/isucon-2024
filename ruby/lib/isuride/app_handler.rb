@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'ulid'
+require 'nanoid'
 
 require 'isuride/base_handler'
 require 'isuride/payment_gateway'
@@ -52,7 +52,7 @@ module Isuride
         raise HttpError.new(400, 'required fields(username, firstname, lastname, date_of_birth) are empty')
       end
 
-      user_id = ULID.generate
+      user_id = Nanoid.generate
       access_token = SecureRandom.hex(32)
       invitation_code = SecureRandom.hex(15)
 
@@ -164,7 +164,7 @@ module Isuride
         raise HttpError.new(400, 'required fields(pickup_coordinate, destination_coordinate) are empty')
       end
 
-      ride_id = ULID.generate
+      ride_id = Nanoid.generate
 
       fare = db_transaction do |tx|
         rides = tx.xquery('SELECT * FROM rides WHERE user_id = ?', @current_user.id).to_a
@@ -188,7 +188,7 @@ module Isuride
           req.destination_coordinate.longitude,
         )
 
-        tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'MATCHING')
+        tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', Nanoid.generate, ride_id, 'MATCHING')
 
         ride_count = tx.xquery('SELECT COUNT(*) FROM rides WHERE user_id = ? LIMIT 1', @current_user.id, as: :array).first[0]
 
@@ -275,7 +275,7 @@ module Isuride
           raise HttpError.new(404, 'ride not found')
         end
 
-        tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'COMPLETED')
+        tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', Nanoid.generate, ride_id, 'COMPLETED')
 
         ride = tx.xquery('SELECT * FROM rides WHERE id = ? LIMIT 1', ride_id).first
         if ride.nil?

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'ulid'
+require 'nanoid'
 
 require 'isuride/base_handler'
 
@@ -37,7 +37,7 @@ module Isuride
         raise HttpError.new(400, 'some of required fields(name) are empty')
       end
 
-      owner_id = ULID.generate
+      owner_id = Nanoid.generate
       access_token = SecureRandom.hex(32)
       chair_register_token = SecureRandom.hex(32)
 
