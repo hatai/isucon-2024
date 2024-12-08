@@ -259,7 +259,7 @@ module Isuride
       end
 
       response = db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT id FROM rides WHERE id = ? LIMIT 1', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
@@ -276,23 +276,23 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'COMPLETED')
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT user_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, updated_at FROM rides WHERE id = ? LIMIT 1', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
 
-        payment_token = tx.xquery('SELECT * FROM payment_tokens WHERE user_id = ?', ride.fetch(:user_id)).first
+        payment_token = tx.xquery('SELECT token FROM payment_tokens WHERE user_id = ? LIMIT 1', ride.fetch(:user_id)).first
         if payment_token.nil?
           raise HttpError.new(400, 'payment token not registered')
         end
 
         fare = calculate_discounted_fare(tx, ride.fetch(:user_id), ride, ride.fetch(:pickup_latitude), ride.fetch(:pickup_longitude), ride.fetch(:destination_latitude), ride.fetch(:destination_longitude))
 
-        payment_gateway_url = tx.query("SELECT value FROM settings WHERE name = 'payment_gateway_url'").first.fetch(:value)
+        payment_gateway_url = tx.query("SELECT value FROM settings WHERE name = 'payment_gateway_url' LIMIT 1").first.fetch(:value)
 
         begin
           PaymentGateway.new(payment_gateway_url, payment_token.fetch(:token)).request_post_payment(amount: fare) do
-            tx.xquery('SELECT * FROM rides WHERE user_id = ? ORDER BY created_at ASC', ride.fetch(:user_id))
+            tx.xquery('SELECT id FROM rides WHERE user_id = ? ORDER BY created_at ASC', ride.fetch(:user_id))
           end
         rescue PaymentGateway::ErroredUpstream => e
           raise HttpError.new(502, e.message)
