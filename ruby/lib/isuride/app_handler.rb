@@ -454,12 +454,12 @@ module Isuride
 
     helpers do
       def get_chair_stats(tx, chair_id)
-        rides = tx.xquery('SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC', chair_id)
+        rides = tx.xquery('SELECT id, evaluation FROM rides WHERE chair_id = ? ORDER BY updated_at DESC', chair_id)
 
         total_rides_count = 0
         total_evaluation = 0.0
         rides.each do |ride|
-          ride_statuses = tx.xquery('SELECT * FROM ride_statuses WHERE ride_id = ? ORDER BY created_at', ride.fetch(:id))
+          ride_statuses = tx.xquery('SELECT status, created_at FROM ride_statuses WHERE ride_id = ? ORDER BY created_at', ride.fetch(:id))
 
           arrived_at = nil
           pickup_at = nil
