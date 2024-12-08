@@ -43,7 +43,7 @@ module Isuride
         raise HttpError.new(400, 'some of required fields(name, model, chair_register_token) are empty')
       end
 
-      owner = db.xquery('SELECT * FROM owners WHERE chair_register_token = ?', req.chair_register_token).first
+      owner = db.xquery('SELECT id FROM owners WHERE chair_register_token = ?', req.chair_register_token).first
       if owner.nil?
         raise HttpError.new(401, 'invalid chair_register_token')
       end
