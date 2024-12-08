@@ -15,9 +15,10 @@ CREATE TABLE settings
 DROP TABLE IF EXISTS chair_models;
 CREATE TABLE chair_models
 (
+  id BIGINT NOT NULL AUTO_INCREMENT,
   name  VARCHAR(50) NOT NULL COMMENT '椅子モデル名',
   speed INTEGER     NOT NULL COMMENT '移動速度',
-  PRIMARY KEY (name)
+  PRIMARY KEY (id)
 )
   COMMENT = '椅子モデルテーブル';
 
