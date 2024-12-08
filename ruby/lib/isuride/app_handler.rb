@@ -507,7 +507,7 @@ module Isuride
             pickup_longitude = ride.fetch(:pickup_longitude)
 
             # すでにクーポンが紐づいているならそれの割引額を参照
-            coupon = tx.xquery('SELECT * FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
+            coupon = tx.xquery('SELECT discount FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
             if coupon.nil?
               0
             else
@@ -515,10 +515,10 @@ module Isuride
             end
           else
             # 初回利用クーポンを最優先で使う
-            coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", user_id).first
+            coupon = tx.xquery("SELECT discount FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL LIMIT 1", user_id).first
             if coupon.nil?
               # 無いなら他のクーポンを付与された順番に使う
-              coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
+              coupon = tx.xquery('SELECT discount FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
               if coupon.nil?
                 0
               else
