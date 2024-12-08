@@ -6,7 +6,6 @@ require 'sinatra/base'
 require 'sinatra/cookies'
 require 'sinatra/json'
 require "sinatra/reloader"
-require 'vernier'
 
 # mysql2-cs-bind gem にマイクロ秒のサポートを入れる
 module Mysql2CsBindPatch
@@ -24,10 +23,6 @@ module Isuride
   class BaseHandler < Sinatra::Base
     INITIAL_FARE = 500
     FARE_PER_DISTANCE = 100
-
-    configure :development do
-      register Sinatra::Reloader
-    end
 
     enable :logging
     set :show_exceptions, :after_handler
