@@ -27,7 +27,7 @@ module Isuride
         raise HttpError.new(401, 'chair_session cookie is required')
       end
       # id しか使われていないみたいなので id だけ取得する
-      chair = db.xquery('SELECT id FROM chairs WHERE access_token = ?', access_token).first
+      chair = db.xquery('SELECT id FROM chairs WHERE access_token = ? LIMIT 1', access_token).first
       if chair.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -44,7 +44,7 @@ module Isuride
         raise HttpError.new(400, 'some of required fields(name, model, chair_register_token) are empty')
       end
 
-      owner = db.xquery('SELECT id FROM owners WHERE chair_register_token = ?', req.chair_register_token).first
+      owner = db.xquery('SELECT id FROM owners WHERE chair_register_token = ? LIMIT 1', req.chair_register_token).first
       if owner.nil?
         raise HttpError.new(401, 'invalid chair_register_token')
       end
@@ -118,7 +118,7 @@ module Isuride
             yet_sent_ride_status.fetch(:status)
           end
 
-        user = tx.xquery('SELECT id, firstname, lastname FROM users WHERE id = ? FOR SHARE', ride.fetch(:user_id)).first
+        user = tx.xquery('SELECT id, firstname, lastname FROM users WHERE id = ? LIMIT 1 FOR SHARE' , ride.fetch(:user_id)).first
 
         unless yet_sent_ride_status.nil?
           tx.xquery('UPDATE ride_statuses SET chair_sent_at = CURRENT_TIMESTAMP(6) WHERE id = ?', yet_sent_ride_status.fetch(:id))
@@ -156,7 +156,7 @@ module Isuride
       req = bind_json(PostChairRidesRideIDStatusRequest)
 
       db_transaction do |tx|
-        ride = tx.xquery('SELECT id, chair_id FROM rides WHERE id = ? FOR UPDATE', ride_id).first
+        ride = tx.xquery('SELECT id, chair_id FROM rides WHERE id = ? LIMIT 1 FOR UPDATE', ride_id).first
         if ride.fetch(:chair_id) != @current_chair.id
           raise HttpError.new(400, 'not assigned to this ride')
         end
