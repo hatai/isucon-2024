@@ -104,7 +104,7 @@ module Isuride
     # GET /api/app/rides
     get '/rides' do
       items = db_transaction do |tx|
-        rides = tx.xquery('SELECT id, chair_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, evaluation FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
+        rides = tx.xquery('SELECT id, chair_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, evaluation, created_at, updated_at FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
 
         rides.filter_map do |ride|
           status = get_latest_ride_status(tx, ride.fetch(:id))
