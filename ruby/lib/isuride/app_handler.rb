@@ -28,7 +28,7 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'app_session cookie is required')
       end
-      user = db.xquery('SELECT * FROM users WHERE access_token = ?', access_token).first
+      user = db.xquery('SELECT id, username, firstname, lastname, date_or_birth, access_token, invitation_code, created_at, updated_at FROM users WHERE access_token = ?', access_token).first
       if user.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -64,13 +64,13 @@ module Isuride
 	# 招待コードを使った登録
         unless req.invitation_code.nil? || req.invitation_code.empty?
           # 招待する側の招待数をチェック
-          coupons = tx.xquery('SELECT * FROM coupons WHERE code = ? FOR UPDATE', "INV_#{req.invitation_code}").to_a
+          coupons = tx.xquery('SELECT user_id FROM coupons WHERE code = ? FOR UPDATE', "INV_#{req.invitation_code}").to_a
           if coupons.size >= 3
             raise HttpError.new(400, 'この招待コードは使用できません。')
           end
 
           # ユーザーチェック
-          inviter = tx.xquery('SELECT * FROM users WHERE invitation_code = ?', req.invitation_code).first
+          inviter = tx.xquery('SELECT id FROM users WHERE invitation_code = ?', req.invitation_code).first
           unless inviter
             raise HttpError.new(400, 'この招待コードは使用できません。')
           end
@@ -104,7 +104,7 @@ module Isuride
     # GET /api/app/rides
     get '/rides' do
       items = db_transaction do |tx|
-        rides = tx.xquery('SELECT * FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
+        rides = tx.xquery('SELECT id, chair_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, evaluation, created_at, updated_at FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
 
         rides.filter_map do |ride|
           status = get_latest_ride_status(tx, ride.fetch(:id))
@@ -114,8 +114,8 @@ module Isuride
 
           fare = calculate_discounted_fare(tx, @current_user.id, ride, ride.fetch(:pickup_latitude),  ride.fetch(:pickup_longitude), ride.fetch(:destination_latitude), ride.fetch(:destination_longitude))
 
-          chair = tx.xquery('SELECT * FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
-          owner = tx.xquery('SELECT * FROM owners WHERE id = ?', chair.fetch(:owner_id)).first
+          chair = tx.xquery('SELECT id, owner_id, name, model FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
+          owner = tx.xquery('SELECT nameFROM owners WHERE id = ?', chair.fetch(:owner_id)).first
 
           {
             id: ride.fetch(:id),
@@ -166,7 +166,7 @@ module Isuride
       ride_id = ULID.generate
 
       fare = db_transaction do |tx|
-        rides = tx.xquery('SELECT * FROM rides WHERE user_id = ?', @current_user.id).to_a
+        rides = tx.xquery('SELECT id FROM rides WHERE user_id = ?', @current_user.id).to_a
 
         continuing_ride_count = rides.count do |ride|
           status = get_latest_ride_status(tx, ride.fetch(:id))
@@ -189,14 +189,14 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'MATCHING')
 
-        ride_count = tx.xquery('SELECT COUNT(*) FROM rides WHERE user_id = ?', @current_user.id, as: :array).first[0]
+        ride_count = tx.xquery('SELECT COUNT(id) FROM rides WHERE user_id = ?', @current_user.id, as: :array).first[0]
 
         if ride_count == 1
           # 初回利用で、初回利用クーポンがあれば必ず使う
-          coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", @current_user.id).first
+          coupon = tx.xquery("SELECT code FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", @current_user.id).first
           if coupon.nil?
             # 無ければ他のクーポンを付与された順番に使う
-            coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
+            coupon = tx.xquery('SELECT code FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
             unless coupon.nil?
               tx.xquery('UPDATE coupons SET used_by = ? WHERE user_id = ? AND code = ?', ride_id, @current_user.id, coupon.fetch(:code))
             end
@@ -205,13 +205,13 @@ module Isuride
           end
         else
           # 他のクーポンを付与された順番に使う
-          coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
+          coupon = tx.xquery('SELECT code FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE', @current_user.id).first
           unless coupon.nil?
             tx.xquery('UPDATE coupons SET used_by = ? WHERE user_id = ? AND code = ?', ride_id, @current_user.id, coupon.fetch(:code))
           end
         end
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT destination_latitude, destination_longitude,  pickup_latitude, pickup_longitude FROM rides WHERE id = ?', ride_id).first
 
         calculate_discounted_fare(tx, @current_user.id, ride, req.pickup_coordinate.latitude, req.pickup_coordinate.longitude, req.destination_coordinate.latitude, req.destination_coordinate.longitude)
       end
@@ -259,7 +259,7 @@ module Isuride
       end
 
       response = db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT id FROM rides WHERE id = ?', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
@@ -276,12 +276,12 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'COMPLETED')
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT  user_id, pickup_latitude,  pickup_longitude, destination_latitude, destination_longitude FROM rides WHERE id = ?', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
 
-        payment_token = tx.xquery('SELECT * FROM payment_tokens WHERE user_id = ?', ride.fetch(:user_id)).first
+        payment_token = tx.xquery('SELECT token FROM payment_tokens WHERE user_id = ?', ride.fetch(:user_id)).first
         if payment_token.nil?
           raise HttpError.new(400, 'payment token not registered')
         end
@@ -292,7 +292,7 @@ module Isuride
 
         begin
           PaymentGateway.new(payment_gateway_url, payment_token.fetch(:token)).request_post_payment(amount: fare) do
-            tx.xquery('SELECT * FROM rides WHERE user_id = ? ORDER BY created_at ASC', ride.fetch(:user_id))
+            tx.xquery('SELECT id FROM rides WHERE user_id = ? ORDER BY created_at ASC', ride.fetch(:user_id))
           end
         rescue PaymentGateway::ErroredUpstream => e
           raise HttpError.new(502, e.message)
@@ -309,12 +309,12 @@ module Isuride
     # GET /api/app/notification
     get '/notification' do
       response = db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', @current_user.id).first
+        ride = tx.xquery('SELECT id, chair_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, created_at, updated_at FROM rides WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', @current_user.id).first
         if ride.nil?
           halt json(data: nil, retry_after_ms: 30)
         end
 
-        yet_sent_ride_status = tx.xquery('SELECT * FROM ride_statuses WHERE ride_id = ? AND app_sent_at IS NULL ORDER BY created_at ASC LIMIT 1', ride.fetch(:id)).first
+        yet_sent_ride_status = tx.xquery('SELECT status FROM ride_statuses WHERE ride_id = ? AND app_sent_at IS NULL ORDER BY created_at ASC LIMIT 1', ride.fetch(:id)).first
         status =
           if yet_sent_ride_status.nil?
             get_latest_ride_status(tx, ride.fetch(:id))
@@ -344,7 +344,7 @@ module Isuride
         }
 
         unless ride.fetch(:chair_id).nil?
-          chair = tx.xquery('SELECT * FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
+          chair = tx.xquery('SELECT id, name, model FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
           stats = get_chair_stats(tx, chair.fetch(:id))
           response[:data][:chair] = {
             id: chair.fetch(:id),
@@ -399,14 +399,14 @@ module Isuride
         end
 
       response = db_transaction do |tx|
-        chairs = tx.query('SELECT * FROM chairs')
+        chairs = tx.query('SELECT id, is_active FROM chairs')
 
         nearby_chairs = chairs.filter_map do |chair|
           unless chair.fetch(:is_active)
             next
           end
 
-          rides = tx.xquery('SELECT * FROM rides WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id))
+          rides = tx.xquery('SELECT id, name, model FROM rides WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id))
 
           skip = false
           rides.each do |ride|
@@ -422,7 +422,7 @@ module Isuride
           end
 
           # 最新の位置情報を取得
-          chair_location = tx.xquery('SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id)).first
+          chair_location = tx.xquery('SELECT latitude, longitude FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id)).first
           if chair_location.nil?
             next
           end
@@ -453,12 +453,12 @@ module Isuride
 
     helpers do
       def get_chair_stats(tx, chair_id)
-        rides = tx.xquery('SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC', chair_id)
+        rides = tx.xquery('SELECT id, evaluation FROM rides WHERE chair_id = ? ORDER BY updated_at DESC', chair_id)
 
         total_rides_count = 0
         total_evaluation = 0.0
         rides.each do |ride|
-          ride_statuses = tx.xquery('SELECT * FROM ride_statuses WHERE ride_id = ? ORDER BY created_at', ride.fetch(:id))
+          ride_statuses = tx.xquery('SELECT status, created_at, updated_at FROM ride_statuses WHERE ride_id = ? ORDER BY created_at', ride.fetch(:id))
 
           arrived_at = nil
           pickup_at = nil
@@ -506,7 +506,7 @@ module Isuride
             pickup_longitude = ride.fetch(:pickup_longitude)
 
             # すでにクーポンが紐づいているならそれの割引額を参照
-            coupon = tx.xquery('SELECT * FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
+            coupon = tx.xquery('SELECT discount FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
             if coupon.nil?
               0
             else
@@ -514,10 +514,10 @@ module Isuride
             end
           else
             # 初回利用クーポンを最優先で使う
-            coupon = tx.xquery("SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", user_id).first
+            coupon = tx.xquery("SELECT discount FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", user_id).first
             if coupon.nil?
               # 無いなら他のクーポンを付与された順番に使う
-              coupon = tx.xquery('SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
+              coupon = tx.xquery('SELECT discount FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1', user_id).first
               if coupon.nil?
                 0
               else

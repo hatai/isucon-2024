@@ -8,13 +8,13 @@ module Isuride
     # GET /api/internal/matching
     get '/matching' do
       # MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-      ride = db.query('SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 1').first
+      ride = db.query('SELECT id FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 1').first
       unless ride
         halt 204
       end
 
       10.times do
-        matched = db.query('SELECT * FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1').first
+        matched = db.query('SELECT id FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1').first
         unless matched
           halt 204
         end

@@ -26,7 +26,7 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'chair_session cookie is required')
       end
-      chair = db.xquery('SELECT * FROM chairs WHERE access_token = ?', access_token).first
+      chair = db.xquery('SELECT id, owner_id, name, model, is_active, access_token, created_at, updated_at FROM chairs WHERE access_token = ?', access_token).first
       if chair.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -43,7 +43,7 @@ module Isuride
         raise HttpError.new(400, 'some of required fields(name, model, chair_register_token) are empty')
       end
 
-      owner = db.xquery('SELECT * FROM owners WHERE chair_register_token = ?', req.chair_register_token).first
+      owner = db.xquery('SELECT id FROM owners WHERE chair_register_token = ?', req.chair_register_token).first
       if owner.nil?
         raise HttpError.new(401, 'invalid chair_register_token')
       end
@@ -79,9 +79,9 @@ module Isuride
         chair_location_id = ULID.generate
         tx.xquery('INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)', chair_location_id, @current_chair.id, req.latitude, req.longitude)
 
-        location = tx.xquery('SELECT * FROM chair_locations WHERE id = ?', chair_location_id).first
+        location = tx.xquery('SELECT created_at FROM chair_locations WHERE id = ?', chair_location_id).first
 
-        ride = tx.xquery('SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1', @current_chair.id).first
+        ride = tx.xquery('SELECT id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1', @current_chair.id).first
         unless ride.nil?
           status = get_latest_ride_status(tx, ride.fetch(:id))
           if status != 'COMPLETED' && status != 'CANCELED'
@@ -104,12 +104,12 @@ module Isuride
     # GET /api/chair/notification
     get '/notification' do
       response = db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1', @current_chair.id).first
+        ride = tx.xquery('SELECT id, user_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1', @current_chair.id).first
         unless ride
           halt json(data: nil, retry_after_ms: 30)
         end
 
-        yet_sent_ride_status = tx.xquery('SELECT * FROM ride_statuses WHERE ride_id = ? AND chair_sent_at IS NULL ORDER BY created_at ASC LIMIT 1', ride.fetch(:id)).first
+        yet_sent_ride_status = tx.xquery('SELECT id FROM ride_statuses WHERE ride_id = ? AND chair_sent_at IS NULL ORDER BY created_at ASC LIMIT 1', ride.fetch(:id)).first
         status =
           if yet_sent_ride_status.nil?
             get_latest_ride_status(tx, ride.fetch(:id))
@@ -117,7 +117,7 @@ module Isuride
             yet_sent_ride_status.fetch(:status)
           end
 
-        user = tx.xquery('SELECT * FROM users WHERE id = ? FOR SHARE', ride.fetch(:user_id)).first
+        user = tx.xquery('SELECT id, firstname, lastname FROM users WHERE id = ? FOR SHARE', ride.fetch(:user_id)).first
 
         unless yet_sent_ride_status.nil?
           tx.xquery('UPDATE ride_statuses SET chair_sent_at = CURRENT_TIMESTAMP(6) WHERE id = ?', yet_sent_ride_status.fetch(:id))
@@ -155,7 +155,7 @@ module Isuride
       req = bind_json(PostChairRidesRideIDStatusRequest)
 
       db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ? FOR UPDATE', ride_id).first
+        ride = tx.xquery('SELECT id, chair_id FROM rides WHERE id = ? FOR UPDATE', ride_id).first
         if ride.fetch(:chair_id) != @current_chair.id
           raise HttpError.new(400, 'not assigned to this ride')
         end
