@@ -12,5 +12,5 @@ gem 'ulid'
 gem 'newrelic_rpm'
 
 group :development do
-    gem 'vernier'
+  gem 'vernier'
 end
