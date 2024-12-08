@@ -4,7 +4,7 @@
   "service": "app",
   "workspaceFolder": "/app/ruby",
   "portsAttributes": {
-    "3000": {
+    "9292": {
       "label": "Hello Remote World",
       "onAutoForward": "notify"
     }
