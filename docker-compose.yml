@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0.40
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./sql:/app:cached
+    environment:
+      MYSQL_ROOT_PASSWORD: isucon
+      MYSQL_USER: isucon
+      MYSQL_PASSWORD: isucon
+      MYSQL_DATABASE: isuride
+    ports:
+      - "3306:3306"
+
+  app:
+    image: ruby:3.3.6
+    working_dir: /app/ruby
+    command: ["bundle", "exec", "puma"]
+    volumes:
+      - .:/app:cached
+      - bundle-cache:/app/ruby/.bundle
+      - bundle-path:/app/ruby/vendor/bundle
+    environment:
+      ISUCON_DB_HOST: db
+      ISUCON_DB_PORT: 3306
+      ISUCON_DB_USER: isucon
+      ISUCON_DB_PASSWORD: isucon
+      ISUCON_DB_NAME: isuride
+      BUNDLE_AUTO_INSTALL: "true"
+      BUNDLE_CACHE_PATH: /app/ruby/.bundle
+      BUNDLE_DEFAULT_INSTALL_USES_PATH: /app/ruby/vendor/bundle
+    depends_on:
+      - db
+
+volumes:
+    db-data:
+    bundle-cache:
+    bundle-path:
