@@ -28,7 +28,7 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'app_session cookie is required')
       end
-      user = db.xquery('SELECT id, username, firstname, lastname, date_or_birth, access_token, invitation_code, created_at, updated_at FROM users WHERE access_token = ?', access_token).first
+      user = db.xquery('SELECT id, username, firstname, lastname, date_of_birth, access_token, invitation_code, created_at, updated_at FROM users WHERE access_token = ?', access_token).first
       if user.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -104,7 +104,7 @@ module Isuride
     # GET /api/app/rides
     get '/rides' do
       items = db_transaction do |tx|
-        rides = tx.xquery('SELECT id, chair_id, evaluation, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, evaluation, created_at, updated_at FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
+        rides = tx.xquery('SELECT id, chair_id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, evaluation, created_at, updated_at FROM rides WHERE user_id = ? ORDER BY created_at DESC', @current_user.id)
 
         rides.filter_map do |ride|
           status = get_latest_ride_status(tx, ride.fetch(:id))
