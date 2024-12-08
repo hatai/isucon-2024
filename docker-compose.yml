@@ -17,7 +17,7 @@ services:
     working_dir: /app/ruby
     command: ["bundle", "exec", "puma"]
     ports:
-      - "3000:9292"
+      - "8080:9292"
       - "9292:9292"
     volumes:
       - .:/app:cached
