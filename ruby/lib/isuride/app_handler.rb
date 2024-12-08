@@ -399,14 +399,14 @@ module Isuride
         end
 
       response = db_transaction do |tx|
-        chairs = tx.query('SELECT id, is_active FROM chairs')
+        chairs = tx.query('SELECT id, name. model, is_active FROM chairs')
 
         nearby_chairs = chairs.filter_map do |chair|
           unless chair.fetch(:is_active)
             next
           end
 
-          rides = tx.xquery('SELECT id, name, model FROM rides WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id))
+          rides = tx.xquery('SELECT id FROM rides WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1', chair.fetch(:id))
 
           skip = false
           rides.each do |ride|
