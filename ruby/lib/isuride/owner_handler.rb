@@ -7,12 +7,7 @@ require 'isuride/base_handler'
 module Isuride
   class OwnerHandler < BaseHandler
     CurrentOwner = Data.define(
-      :id,
-      :name,
-      :access_token,
-      :chair_register_token,
-      :created_at,
-      :updated_at,
+      :id
     )
 
     before do
@@ -24,7 +19,7 @@ module Isuride
       if access_token.nil?
         raise HttpError.new(401, 'owner_session cookie is required')
       end
-      owner = db.xquery('SELECT * FROM owners WHERE access_token = ?', access_token).first
+      owner = db.xquery('SELECT id FROM owners WHERE access_token = ?', access_token).first
       if owner.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -80,13 +75,13 @@ module Isuride
         end
 
       res = db_transaction do |tx|
-        chairs = tx.xquery('SELECT * FROM chairs WHERE owner_id = ?', @current_owner.id)
+        chairs = tx.xquery('SELECT id, name, name FROM chairs WHERE owner_id = ?', @current_owner.id)
 
         res = { total_sales: 0, chairs: [] }
 
         model_sales_by_model = Hash.new { |h, k| h[k] = 0 }
         chairs.each do |chair|
-          rides = tx.xquery("SELECT rides.* FROM rides JOIN ride_statuses ON rides.id = ride_statuses.ride_id WHERE chair_id = ? AND status = 'COMPLETED' AND updated_at BETWEEN ? AND ? + INTERVAL 999 MICROSECOND", chair.fetch(:id), since, until_).to_a
+          rides = tx.xquery("SELECT rides.pickup_latitude, rides.pickup_longitude, rides.destination_latitude, rides.destination_longitude FROM rides JOIN ride_statuses ON rides.id = ride_statuses.ride_id WHERE chair_id = ? AND status = 'COMPLETED' AND updated_at BETWEEN ? AND ? + INTERVAL 999 MICROSECOND", chair.fetch(:id), since, until_).to_a
 
           sales = sum_sales(rides)
           res[:total_sales] += sales
