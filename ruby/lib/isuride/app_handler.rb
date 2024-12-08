@@ -29,7 +29,7 @@ module Isuride
         raise HttpError.new(401, 'app_session cookie is required')
       end
       # id しか使われていないみたいなので id だけ取得する
-      user = db.xquery('SELECT id FROM users WHERE access_token = ?', access_token).first
+      user = db.xquery('SELECT id FROM users WHERE access_token = ? LIMIT 1', access_token).first
       if user.nil?
         raise HttpError.new(401, 'invalid access token')
       end
@@ -71,7 +71,7 @@ module Isuride
           end
 
           # ユーザーチェック
-          inviter = tx.xquery('SELECT id FROM users WHERE invitation_code = ?', req.invitation_code).first
+          inviter = tx.xquery('SELECT id FROM users WHERE invitation_code = ? LIMIT 1', req.invitation_code).first
           unless inviter
             raise HttpError.new(400, 'この招待コードは使用できません。')
           end
@@ -115,8 +115,8 @@ module Isuride
 
           fare = calculate_discounted_fare(tx, @current_user.id, ride, ride.fetch(:pickup_latitude),  ride.fetch(:pickup_longitude), ride.fetch(:destination_latitude), ride.fetch(:destination_longitude))
 
-          chair = tx.xquery('SELECT * FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
-          owner = tx.xquery('SELECT * FROM owners WHERE id = ?', chair.fetch(:owner_id)).first
+          chair = tx.xquery('SELECT * FROM chairs WHERE id = ? LIMIT 1', ride.fetch(:chair_id)).first
+          owner = tx.xquery('SELECT * FROM owners WHERE id = ? LIMIT 1', chair.fetch(:owner_id)).first
 
           {
             id: ride.fetch(:id),
@@ -190,7 +190,7 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'MATCHING')
 
-        ride_count = tx.xquery('SELECT COUNT(*) FROM rides WHERE user_id = ?', @current_user.id, as: :array).first[0]
+        ride_count = tx.xquery('SELECT COUNT(*) FROM rides WHERE user_id = ? LIMIT 1', @current_user.id, as: :array).first[0]
 
         if ride_count == 1
           # 初回利用で、初回利用クーポンがあれば必ず使う
@@ -212,7 +212,7 @@ module Isuride
           end
         end
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT * FROM rides WHERE id = ? LIMIT 1', ride_id).first
 
         calculate_discounted_fare(tx, @current_user.id, ride, req.pickup_coordinate.latitude, req.pickup_coordinate.longitude, req.destination_coordinate.latitude, req.destination_coordinate.longitude)
       end
@@ -260,7 +260,7 @@ module Isuride
       end
 
       response = db_transaction do |tx|
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT * FROM rides WHERE id = ? LIMIT 1', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
@@ -277,19 +277,19 @@ module Isuride
 
         tx.xquery('INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)', ULID.generate, ride_id, 'COMPLETED')
 
-        ride = tx.xquery('SELECT * FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT * FROM rides WHERE id = ? LIMIT 1', ride_id).first
         if ride.nil?
           raise HttpError.new(404, 'ride not found')
         end
 
-        payment_token = tx.xquery('SELECT * FROM payment_tokens WHERE user_id = ?', ride.fetch(:user_id)).first
+        payment_token = tx.xquery('SELECT * FROM payment_tokens WHERE user_id = ? LIMIT 1', ride.fetch(:user_id)).first
         if payment_token.nil?
           raise HttpError.new(400, 'payment token not registered')
         end
 
         fare = calculate_discounted_fare(tx, ride.fetch(:user_id), ride, ride.fetch(:pickup_latitude), ride.fetch(:pickup_longitude), ride.fetch(:destination_latitude), ride.fetch(:destination_longitude))
 
-        payment_gateway_url = tx.query("SELECT value FROM settings WHERE name = 'payment_gateway_url'").first.fetch(:value)
+        payment_gateway_url = tx.query("SELECT value FROM settings WHERE name = 'payment_gateway_url' LIMIT 1").first.fetch(:value)
 
         begin
           PaymentGateway.new(payment_gateway_url, payment_token.fetch(:token)).request_post_payment(amount: fare) do
@@ -345,7 +345,7 @@ module Isuride
         }
 
         unless ride.fetch(:chair_id).nil?
-          chair = tx.xquery('SELECT * FROM chairs WHERE id = ?', ride.fetch(:chair_id)).first
+          chair = tx.xquery('SELECT * FROM chairs WHERE id = ? LIMIT 1', ride.fetch(:chair_id)).first
           stats = get_chair_stats(tx, chair.fetch(:id))
           response[:data][:chair] = {
             id: chair.fetch(:id),
