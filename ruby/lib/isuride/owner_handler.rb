@@ -76,7 +76,7 @@ module Isuride
         end
 
       res = db_transaction do |tx|
-        chairs = tx.xquery('SELECT id, name, name FROM chairs WHERE owner_id = ?', @current_owner.id)
+        chairs = tx.xquery('SELECT id, name, model FROM chairs WHERE owner_id = ?', @current_owner.id)
 
         res = { total_sales: 0, chairs: [] }
 
