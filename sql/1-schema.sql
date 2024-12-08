@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS chairs;
 CREATE TABLE chairs
 (
   id           BIGINT  NOT NULL AUTO_INCREMENT COMMENT '椅子ID',
-  owner_id     BIGNT  NOT NULL AUTO_INCREMENT COMMENT 'オーナーID',
+  owner_id     BIGINT  NOT NULL AUTO_INCREMENT COMMENT 'オーナーID',
   name         VARCHAR(30)  NOT NULL COMMENT '椅子の名前',
   model        TEXT         NOT NULL COMMENT '椅子のモデル',
   is_active    TINYINT(1)   NOT NULL COMMENT '配椅子受付中かどうか',
