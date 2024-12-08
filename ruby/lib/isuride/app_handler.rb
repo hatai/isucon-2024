@@ -211,7 +211,7 @@ module Isuride
           end
         end
 
-        ride = tx.xquery('SELECT destination_latitude, destination_longitude,  pickup_latitude, pickup_longitude FROM rides WHERE id = ?', ride_id).first
+        ride = tx.xquery('SELECT id, destination_latitude, destination_longitude,  pickup_latitude, pickup_longitude FROM rides WHERE id = ?', ride_id).first
 
         calculate_discounted_fare(tx, @current_user.id, ride, req.pickup_coordinate.latitude, req.pickup_coordinate.longitude, req.destination_coordinate.latitude, req.destination_coordinate.longitude)
       end
