@@ -507,7 +507,7 @@ module Isuride
             pickup_longitude = ride.fetch(:pickup_longitude)
 
             # すでにクーポンが紐づいているならそれの割引額を参照
-            coupon = tx.xquery('SELECT discount FROM coupons WHERE used_by = ?', ride.fetch(:id)).first
+            coupon = tx.xquery('SELECT discount FROM coupons WHERE used_by = ? LIMIT 1', ride.fetch(:id)).first
             if coupon.nil?
               0
             else
