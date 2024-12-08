@@ -5,7 +5,6 @@ require 'mysql2-cs-bind'
 require 'sinatra/base'
 require 'sinatra/cookies'
 require 'sinatra/json'
-require "sinatra/reloader"
 
 # mysql2-cs-bind gem にマイクロ秒のサポートを入れる
 module Mysql2CsBindPatch
